@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tile Inspector</title>
+</head>
+
+<body>
+  <div id="app">
+    <form id="form" action="#">
+      <label for="#tilejson-input">URL to a TileJSON resource (<a
+          href="https://github.com/mapbox/tilejson-spec/tree/master/3.0.0" target="_blank">specification</a>)
+      </label>
+
+      <input name="tilejson" id="tilejson-input" type="url" required
+        value="https://demotiles.maplibre.org/tiles/tiles.json">
+
+      <div>
+        <button>Load</button>
+      </div>
+    </form>
+
+    <div id="map"></div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
