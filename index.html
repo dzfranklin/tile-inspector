@@ -9,18 +9,25 @@
 
 <body>
   <div id="app">
-    <form id="form" action="#">
-      <label for="#tilejson-input">URL to a TileJSON resource (<a
-          href="https://github.com/mapbox/tilejson-spec/tree/master/3.0.0" target="_blank">specification</a>)
-      </label>
-
-      <input name="tilejson" id="tilejson-input" type="url" required
-        value="https://demotiles.maplibre.org/tiles/tiles.json">
-
-      <div>
-        <button>Load</button>
+    <div id="forms-container">
+      <form id="url-form" action="#">
+        <fieldset>
+          <legend>URL to a TileJSON resource (<a href="https://github.com/mapbox/tilejson-spec/tree/master/3.0.0"
+              target="_blank">specification</a>)
+          </legend>
+          <div class="input-row">
+            <input name="tilejson" type="url" required value="https://demotiles.maplibre.org/tiles/tiles.json">
+            <button>Load</button>
+          </div>
+        </fieldset>
+      </form>
+      <form id="pmtiles-file-form" action="#">
+        <fieldset>
+          <legend>Select a <a href="https://pmtiles.com" target="_blank">PMTiles</a> file</legend>
+          <input id="pmtiles-file-input" type="file" required>
+        </fieldset>
+      </form>
       </div>
-    </form>
 
     <div id="map"></div>
   </div>
