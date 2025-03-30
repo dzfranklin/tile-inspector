@@ -1,0 +1,32 @@
+.maplibregl-inspect_popup {
+  color: #333;
+  display: table;
+}
+
+.maplibregl-inspect_feature:not(:last-child) {
+  border-bottom: 1px solid #ccc;
+}
+
+.maplibregl-inspect_layer:before {
+  content: '#';
+}
+
+.maplibregl-inspect_layer {
+  display: block;
+  font-weight: bold;
+}
+
+.maplibregl-inspect_property {
+  display: table-row;
+}
+
+.maplibregl-inspect_property-value {
+  display: table-cell;
+  word-break: break-all;
+}
+
+.maplibregl-inspect_property-name {
+  display: table-cell;
+  padding-right: 10px;
+  word-break: break-all;
+}

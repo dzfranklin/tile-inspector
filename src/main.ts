@@ -1,9 +1,8 @@
 import './style.css';
+import './inspectPopup.css';
 import ml from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { $, createElement } from './domutil';
-import '@maplibre/maplibre-gl-inspect/dist/maplibre-gl-inspect.css';
-import MaplibreInspect from '@maplibre/maplibre-gl-inspect';
 import {
   FileSource as PMTilesFileSource,
   PMTiles,
