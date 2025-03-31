@@ -9,7 +9,7 @@ export function generateVectorStyle(
   source: SourceSpecification,
   vectorLayers: LayerSpecification[]
 ): StyleSpecification {
-  let baseOpacity = 0.35;
+  let baseOpacity = 0.85;
 
   const layers: LayerSpecification[] = [];
 
@@ -20,10 +20,45 @@ export function generateVectorStyle(
       'background-color': '#333333',
     },
   });
+  layers.push({
+    id: 'country_fill',
+    type: 'fill',
+    paint: {
+      'fill-color': '#141414',
+    },
+    source: 'maplibre',
+    'source-layer': 'countries',
+  });
+  layers.push({
+    id: 'country_border',
+    type: 'line',
+    paint: {
+      'line-color': '#707070',
+      'line-width': 0.5,
+    },
+    source: 'maplibre',
+    'source-layer': 'countries',
+  });
+  layers.push({
+    id: 'country_label',
+    type: 'symbol',
+    paint: {
+      'text-color': '#999999',
+    },
+    filter: ['all'],
+    layout: {
+      'text-font': ['Noto Sans Medium'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 4, 12, 6, 16],
+      'text-field': ['step', ['zoom'], ['get', 'ABBREV'], 4, ['get', 'NAME']],
+      'text-max-width': 10,
+    },
+    source: 'maplibre',
+    'source-layer': 'centroids',
+  });
 
   for (const [i, layer] of vectorLayers.entries()) {
     layers.push({
-      id: `${layer.id}_fill`,
+      id: `generated_${layer.id}_fill`,
       type: 'fill',
       source: 'source',
       'source-layer': layer.id,
@@ -45,7 +80,7 @@ export function generateVectorStyle(
       filter: ['==', ['geometry-type'], 'Polygon'],
     });
     layers.push({
-      id: `${layer.id}_stroke`,
+      id: `generated_${layer.id}_stroke`,
       type: 'line',
       source: 'source',
       'source-layer': layer.id,
@@ -61,7 +96,7 @@ export function generateVectorStyle(
       filter: ['==', ['geometry-type'], 'LineString'],
     });
     layers.push({
-      id: `${layer.id}_point`,
+      id: `generated_${layer.id}_point`,
       type: 'circle',
       source: 'source',
       'source-layer': layer.id,
@@ -82,6 +117,10 @@ export function generateVectorStyle(
     version: 8,
     sources: {
       source,
+      maplibre: {
+        url: 'https://demotiles.maplibre.org/tiles/tiles.json',
+        type: 'vector',
+      },
     },
     glyphs: 'https://cdn.protomaps.com/fonts/pbf/{fontstack}/{range}.pbf',
     layers: layers,

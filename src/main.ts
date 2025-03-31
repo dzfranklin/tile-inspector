@@ -9,6 +9,8 @@ import {
   Protocol as PMTilesProtocol,
 } from 'pmtiles';
 import { generateVectorStyle } from './style';
+import { ZoomDisplayControl } from './ZoomDisplayControl';
+import { TileBoundariesControl } from './TileBoundariesControl';
 
 const pmtilesProtocol = new PMTilesProtocol({ metadata: true });
 ml.addProtocol('pmtiles', pmtilesProtocol.tile);
@@ -98,12 +100,23 @@ function _main(
     style,
     center: [0, 0],
     zoom: 1,
+    hash: true,
   });
   (window as any).map = map;
 
-  map.showTileBoundaries = true;
-
-  map.addControl(new ml.NavigationControl());
+  const queryBoxSize = 2;
+  const queryRenderedFeatures = (p: ml.Point) =>
+    map.queryRenderedFeatures(
+      [
+        [p.x - queryBoxSize / 2, p.y - queryBoxSize / 2],
+        [p.x + queryBoxSize / 2, p.y + queryBoxSize / 2],
+      ],
+      {
+        layers: style.layers
+          .filter((l) => l.id.startsWith('generated_'))
+          .map((l) => l.id),
+      }
+    );
 
   let hoverFs: ml.MapGeoJSONFeature[] = [];
   const clearHover = () => {
@@ -115,12 +128,12 @@ function _main(
     hoverFs = fs;
     hoverFs.forEach((f) => map.setFeatureState(f, { hover: true }));
   };
-  map.on('mousemove', (ev) => markHover(map.queryRenderedFeatures(ev.point)));
+  map.on('mousemove', (ev) => markHover(queryRenderedFeatures(ev.point)));
   $('#map')!.addEventListener('mouseleave', () => clearHover());
 
   const inspectPopup = new ml.Popup();
   map.on('click', (ev) => {
-    const fs = map.queryRenderedFeatures(ev.point);
+    const fs = queryRenderedFeatures(ev.point);
     markHover(fs);
 
     if (fs.length === 0) {
@@ -131,6 +144,10 @@ function _main(
       inspectPopup.addTo(map);
     }
   });
+
+  map.addControl(new ZoomDisplayControl());
+  map.addControl(new ml.NavigationControl());
+  map.addControl(new TileBoundariesControl());
 }
 
 type GeoJSONFeatureWithSourceLayer = ml.MapGeoJSONFeature & {
