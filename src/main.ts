@@ -133,8 +133,6 @@ const optionsSpec = z.object({
   rasterFormat: z.enum(['raster', 'raster-dem-mapbox', 'raster-dem-terrarium']),
 });
 
-type Options = z.infer<typeof optionsSpec>;
-
 function _main(
   partialSource: Omit<ml.SourceSpecification, 'type'>,
   rawTilejson: unknown
