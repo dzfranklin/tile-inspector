@@ -1,62 +1,82 @@
 import type {
   LayerSpecification,
+  RasterSourceSpecification,
   SourceSpecification,
   StyleSpecification,
+  VectorSourceSpecification,
 } from 'maplibre-gl';
 import { schemeSet3 } from 'd3-scale-chromatic';
 
-export function generateVectorStyle(
-  source: SourceSpecification,
-  vectorLayers: LayerSpecification[],
-  layerOpacity: number
-): StyleSpecification {
-  const layers: LayerSpecification[] = [];
+interface StyleOptions {
+  layerOpacity: number;
+}
 
-  layers.push({
-    id: 'background',
-    type: 'background',
-    paint: {
-      'background-color': '#333333',
+const baseStyle: StyleSpecification = {
+  version: 8,
+  sources: {
+    maplibre: {
+      url: 'https://demotiles.maplibre.org/tiles/tiles.json',
+      type: 'vector',
     },
-  });
-  layers.push({
-    id: 'country_fill',
-    type: 'fill',
-    paint: {
-      'fill-color': '#141414',
+  },
+  glyphs: 'https://cdn.protomaps.com/fonts/pbf/{fontstack}/{range}.pbf',
+  layers: [
+    {
+      id: 'background',
+      type: 'background',
+      paint: {
+        'background-color': '#333333',
+      },
     },
-    source: 'maplibre',
-    'source-layer': 'countries',
-  });
-  layers.push({
-    id: 'country_border',
-    type: 'line',
-    paint: {
-      'line-color': '#707070',
-      'line-width': 0.5,
+    {
+      id: 'country_fill',
+      type: 'fill',
+      paint: {
+        'fill-color': '#141414',
+      },
+      source: 'maplibre',
+      'source-layer': 'countries',
     },
-    source: 'maplibre',
-    'source-layer': 'countries',
-  });
-  layers.push({
-    id: 'country_label',
-    type: 'symbol',
-    paint: {
-      'text-color': '#999999',
+    {
+      id: 'country_border',
+      type: 'line',
+      paint: {
+        'line-color': '#707070',
+        'line-width': 0.5,
+      },
+      source: 'maplibre',
+      'source-layer': 'countries',
     },
-    filter: ['all'],
-    layout: {
-      'text-font': ['Noto Sans Medium'],
-      'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 4, 12, 6, 16],
-      'text-field': ['step', ['zoom'], ['get', 'ABBREV'], 4, ['get', 'NAME']],
-      'text-max-width': 10,
+    {
+      id: 'country_label',
+      type: 'symbol',
+      paint: {
+        'text-color': '#999999',
+      },
+      filter: ['all'],
+      layout: {
+        'text-font': ['Noto Sans Medium'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 4, 12, 6, 16],
+        'text-field': ['step', ['zoom'], ['get', 'ABBREV'], 4, ['get', 'NAME']],
+        'text-max-width': 10,
+      },
+      source: 'maplibre',
+      'source-layer': 'centroids',
     },
-    source: 'maplibre',
-    'source-layer': 'centroids',
-  });
+  ],
+};
+
+export function generateVectorStyle(
+  source: VectorSourceSpecification,
+  vectorLayers: { id: string }[],
+  options: StyleOptions
+): StyleSpecification {
+  const style = structuredClone(baseStyle);
+
+  style.sources.source = source;
 
   for (const [i, layer] of vectorLayers.entries()) {
-    layers.push({
+    style.layers.push({
       id: `generated_${layer.id}_fill`,
       type: 'fill',
       source: 'source',
@@ -66,8 +86,8 @@ export function generateVectorStyle(
         'fill-opacity': [
           'case',
           ['boolean', ['feature-state', 'hover'], false],
-          layerOpacity + 0.15,
-          layerOpacity,
+          options.layerOpacity + 0.15,
+          options.layerOpacity,
         ],
         'fill-outline-color': [
           'case',
@@ -78,7 +98,7 @@ export function generateVectorStyle(
       },
       filter: ['==', ['geometry-type'], 'Polygon'],
     });
-    layers.push({
+    style.layers.push({
       id: `generated_${layer.id}_stroke`,
       type: 'line',
       source: 'source',
@@ -94,13 +114,13 @@ export function generateVectorStyle(
         'line-opacity': [
           'case',
           ['boolean', ['feature-state', 'hover'], false],
-          layerOpacity + 0.15,
-          layerOpacity,
+          options.layerOpacity + 0.15,
+          options.layerOpacity,
         ],
       },
       filter: ['==', ['geometry-type'], 'LineString'],
     });
-    layers.push({
+    style.layers.push({
       id: `generated_${layer.id}_point`,
       type: 'circle',
       source: 'source',
@@ -116,24 +136,30 @@ export function generateVectorStyle(
         'circle-opacity': [
           'case',
           ['boolean', ['feature-state', 'hover'], false],
-          layerOpacity + 0.15,
-          layerOpacity,
+          options.layerOpacity + 0.15,
+          options.layerOpacity,
         ],
       },
       filter: ['==', ['geometry-type'], 'Point'],
     });
   }
 
-  return {
-    version: 8,
-    sources: {
-      source,
-      maplibre: {
-        url: 'https://demotiles.maplibre.org/tiles/tiles.json',
-        type: 'vector',
-      },
+  return style;
+}
+
+export function generateRasterStyle(
+  source: RasterSourceSpecification,
+  options: StyleOptions
+): StyleSpecification {
+  const style = structuredClone(baseStyle);
+  style.sources.source = source;
+  style.layers.push({
+    id: 'generated_raster',
+    type: 'raster',
+    source: 'source',
+    paint: {
+      'raster-opacity': options.layerOpacity,
     },
-    glyphs: 'https://cdn.protomaps.com/fonts/pbf/{fontstack}/{range}.pbf',
-    layers: layers,
-  };
+  });
+  return style;
 }

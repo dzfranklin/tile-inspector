@@ -12,11 +12,20 @@
     <div id="forms-container">
       <form id="url-form" action="#">
         <fieldset>
-          <legend>URL to a TileJSON resource (<a href="https://github.com/mapbox/tilejson-spec/tree/master/3.0.0"
+          <legend>Load TileJSON (<a href="https://github.com/mapbox/tilejson-spec/tree/master/3.0.0"
               target="_blank">specification</a>)
           </legend>
           <div class="input-row">
             <input name="tilejson" type="url" required value="https://demotiles.maplibre.org/tiles/tiles.json">
+            <button>Load</button>
+          </div>
+        </fieldset>
+      </form>
+      <form id="pmtiles-url-form" action="#">
+        <fieldset>
+          <legend>Load <a href="https://pmtiles.com" target="_blank">PMTiles</a></legend>
+          <div class="input-row">
+            <input name="url" type="url" required value="https://demo-bucket.protomaps.com/v4.pmtiles">
             <button>Load</button>
           </div>
         </fieldset>
@@ -41,7 +50,7 @@
           </datalist>
         </div>
       </form>
-      </div>
+    </div>
 
     <div id="map"></div>
   </div>

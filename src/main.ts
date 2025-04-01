@@ -5,12 +5,14 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { $, createElement } from './domutil';
 import {
   FileSource as PMTilesFileSource,
+  FetchSource as PMTilesFetchSource,
   PMTiles,
   Protocol as PMTilesProtocol,
 } from 'pmtiles';
-import { generateVectorStyle } from './style';
+import { generateRasterStyle, generateVectorStyle } from './style';
 import { ZoomDisplayControl } from './ZoomDisplayControl';
 import { TileBoundariesControl } from './TileBoundariesControl';
+import { tilejsonSpec } from './tilejson';
 
 const pmtilesProtocol = new PMTilesProtocol({ metadata: true });
 ml.addProtocol('pmtiles', pmtilesProtocol.tile);
@@ -27,17 +29,43 @@ urlForm.addEventListener('submit', async (ev) => {
     return;
   }
 
-  const tilejson = await(await fetch(tilejsonURL)).json();
-  if (!tilejson.vector_layers) {
-    alert('TileJSON must have vector_layers property');
-  }
+  urlForm.querySelector('button')!.innerText = 'Loading...';
+
+  const tilejson = await (await fetch(tilejsonURL)).json();
 
   main(
     {
-      type: 'vector',
       url: tilejsonURL,
     },
-    tilejson.vector_layers
+    tilejson
+  );
+});
+
+const pmtilesURLForm = $<HTMLFormElement>('#pmtiles-url-form')!;
+pmtilesURLForm.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const data = new FormData(pmtilesURLForm);
+  const pmtilesURL = data.get('url')! as string;
+  if (location.protocol !== 'http:' && !pmtilesURL.startsWith('https://')) {
+    alert('URL must start with https://');
+    return;
+  }
+
+  pmtilesURLForm.querySelector('button')!.innerText = 'Loading...';
+
+  const file = new PMTiles(new PMTilesFetchSource(pmtilesURL));
+  const header = await file.getHeader();
+  const metadata = (await file.getMetadata()) as any;
+  pmtilesProtocol.add(file);
+
+  main(
+    {
+      tiles: [`pmtiles://${file.source.getKey()}/{z}/{x}/{y}`],
+      minzoom: header.minZoom,
+      maxzoom: header.maxZoom,
+      bounds: [header.minLon, header.minLat, header.maxLon, header.maxLat],
+    },
+    metadata
   );
 });
 
@@ -57,48 +85,79 @@ async function loadPMTilesFileInput() {
   const metadata = (await file.getMetadata()) as any;
   pmtilesProtocol.add(file);
 
-  if (!metadata.vector_layers) {
-    alert('TileJSON must have vector_layers property');
-  }
-
   main(
     {
-      type: 'vector',
       tiles: [`pmtiles://${file.source.getKey()}/{z}/{x}/{y}`],
       minzoom: header.minZoom,
       maxzoom: header.maxZoom,
       bounds: [header.minLon, header.minLat, header.maxLon, header.maxLat],
     },
-    metadata.vector_layers
+    metadata
   );
 }
 
-function main(
-  source: ml.VectorSourceSpecification,
-  vectorLayers: ml.LayerSpecification[]
-) {
+function main(source: Omit<ml.SourceSpecification, 'type'>, tilejson: any) {
   console.info('source', source);
-  console.info('vectorLayers', vectorLayers);
+  console.info('tilejson', tilejson);
   try {
-    _main(source, vectorLayers);
+    _main(source, tilejson);
   } catch (err) {
-    alert('Error: ' + err);
+    let msg = err + '';
+    if (err instanceof Error) msg = err.message;
+    alert('Error: ' + msg);
     throw err;
   }
 }
 
-function _main(
-  source: ml.VectorSourceSpecification,
-  vectorLayers: ml.LayerSpecification[]
-) {
-  const options = new FormData($<HTMLFormElement>('#options-form')!);
+interface Options {
+  layerOpacity: number;
+}
 
-  let layerOpacity = parseInt(options.get('layer-opacity') as string) / 100;
+function readOptions(): Options {
+  const form = new FormData($<HTMLFormElement>('#options-form')!);
+
+  let layerOpacity = parseInt(form.get('layer-opacity') as string) / 100;
   if (Number.isNaN(layerOpacity)) layerOpacity = 1;
+
+  return { layerOpacity };
+}
+
+function _main(
+  source: Omit<ml.SourceSpecification, 'type'>,
+  rawTilejson: unknown
+) {
+  const tilejsonParseResult = tilejsonSpec.safeParse(rawTilejson);
+  if (tilejsonParseResult.error) {
+    const errors = tilejsonParseResult.error.flatten();
+    throw new Error(
+      'Failed to parse TileJSON: ' +
+        [
+          ...errors.formErrors,
+          ...Object.entries(errors.fieldErrors).map(
+            ([field, err]) => `${field} is ${err}`
+          ),
+        ].join(', ')
+    );
+  }
+  const tilejson = tilejsonParseResult.data;
+
+  const options = readOptions();
 
   formsContainer.style.display = 'none';
 
-  const style = generateVectorStyle(source, vectorLayers, layerOpacity);
+  let style: ml.StyleSpecification;
+  if (!tilejson.format || tilejson.format === 'pbf') {
+    if (!tilejson.vector_layers) {
+      throw new Error('TileJSON is missing vector_layers');
+    }
+    style = generateVectorStyle(
+      { ...source, type: 'vector' },
+      tilejson.vector_layers,
+      options
+    );
+  } else {
+    style = generateRasterStyle({ ...source, type: 'raster' }, options);
+  }
 
   const map = new ml.Map({
     container: $('#map')!,
@@ -109,50 +168,52 @@ function _main(
   });
   (window as any).map = map;
 
-  const queryBoxSize = 2;
-  const queryRenderedFeatures = (p: ml.Point) =>
-    map.queryRenderedFeatures(
-      [
-        [p.x - queryBoxSize / 2, p.y - queryBoxSize / 2],
-        [p.x + queryBoxSize / 2, p.y + queryBoxSize / 2],
-      ],
-      {
-        layers: style.layers
-          .filter((l) => l.id.startsWith('generated_'))
-          .map((l) => l.id),
-      }
-    );
-
-  let hoverFs: ml.MapGeoJSONFeature[] = [];
-  const clearHover = () => {
-    hoverFs.forEach((f) => map.setFeatureState(f, { hover: false }));
-    hoverFs = [];
-  };
-  const markHover = (fs: ml.MapGeoJSONFeature[]) => {
-    clearHover();
-    hoverFs = fs;
-    hoverFs.forEach((f) => map.setFeatureState(f, { hover: true }));
-  };
-  map.on('mousemove', (ev) => markHover(queryRenderedFeatures(ev.point)));
-  $('#map')!.addEventListener('mouseleave', () => clearHover());
-
-  const inspectPopup = new ml.Popup();
-  map.on('click', (ev) => {
-    const fs = queryRenderedFeatures(ev.point);
-    markHover(fs);
-
-    if (fs.length === 0) {
-      inspectPopup.remove();
-    } else {
-      inspectPopup.setLngLat(ev.lngLat);
-      inspectPopup.setDOMContent(renderPopup(fs));
-      inspectPopup.addTo(map);
-    }
-  });
-
   map.addControl(new ZoomDisplayControl());
   map.addControl(new ml.NavigationControl());
   map.addControl(new TileBoundariesControl());
+
+  map.on('style.load', () => {
+    const queryBoxSize = 2;
+    const queryRenderedFeatures = (p: ml.Point) =>
+      map.queryRenderedFeatures(
+        [
+          [p.x - queryBoxSize / 2, p.y - queryBoxSize / 2],
+          [p.x + queryBoxSize / 2, p.y + queryBoxSize / 2],
+        ],
+        {
+          layers: style.layers
+            .filter((l) => l.id.startsWith('generated_'))
+            .map((l) => l.id),
+        }
+      );
+
+    let hoverFs: ml.MapGeoJSONFeature[] = [];
+    const clearHover = () => {
+      hoverFs.forEach((f) => map.setFeatureState(f, { hover: false }));
+      hoverFs = [];
+    };
+    const markHover = (fs: ml.MapGeoJSONFeature[]) => {
+      clearHover();
+      hoverFs = fs;
+      hoverFs.forEach((f) => map.setFeatureState(f, { hover: true }));
+    };
+    map.on('mousemove', (ev) => markHover(queryRenderedFeatures(ev.point)));
+    $('#map')!.addEventListener('mouseleave', () => clearHover());
+
+    const inspectPopup = new ml.Popup();
+    map.on('click', (ev) => {
+      const fs = queryRenderedFeatures(ev.point);
+      markHover(fs);
+
+      if (fs.length === 0) {
+        inspectPopup.remove();
+      } else {
+        inspectPopup.setLngLat(ev.lngLat);
+        inspectPopup.setDOMContent(renderPopup(fs));
+        inspectPopup.addTo(map);
+      }
+    });
+  });
 }
 
 type GeoJSONFeatureWithSourceLayer = ml.MapGeoJSONFeature & {
