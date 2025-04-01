@@ -9,10 +9,15 @@ import {
   PMTiles,
   Protocol as PMTilesProtocol,
 } from 'pmtiles';
-import { generateRasterStyle, generateVectorStyle } from './style';
+import {
+  generateHillshadingStyle,
+  generateRasterStyle,
+  generateVectorStyle,
+} from './style';
 import { ZoomDisplayControl } from './ZoomDisplayControl';
 import { TileBoundariesControl } from './TileBoundariesControl';
 import { tilejsonSpec } from './tilejson';
+import { z, ZodIssueCode } from 'zod';
 
 const pmtilesProtocol = new PMTilesProtocol({ metadata: true });
 ml.addProtocol('pmtiles', pmtilesProtocol.tile);
@@ -96,11 +101,14 @@ async function loadPMTilesFileInput() {
   );
 }
 
-function main(source: Omit<ml.SourceSpecification, 'type'>, tilejson: any) {
-  console.info('source', source);
+function main(
+  partialSource: Omit<ml.SourceSpecification, 'type'>,
+  tilejson: any
+) {
+  console.info('partialSource', partialSource);
   console.info('tilejson', tilejson);
   try {
-    _main(source, tilejson);
+    _main(partialSource, tilejson);
   } catch (err) {
     let msg = err + '';
     if (err instanceof Error) msg = err.message;
@@ -109,21 +117,26 @@ function main(source: Omit<ml.SourceSpecification, 'type'>, tilejson: any) {
   }
 }
 
-interface Options {
-  layerOpacity: number;
-}
+const optionsSpec = z.object({
+  layerOpacity: z.string().transform((arg, ctx) => {
+    const v = parseInt(arg);
+    if (!Number.isFinite(v)) {
+      ctx.addIssue({
+        fatal: true,
+        code: ZodIssueCode.custom,
+        message: 'not a number',
+      });
+      return z.NEVER;
+    }
+    return v / 100;
+  }),
+  rasterFormat: z.enum(['raster', 'raster-dem-mapbox', 'raster-dem-terrarium']),
+});
 
-function readOptions(): Options {
-  const form = new FormData($<HTMLFormElement>('#options-form')!);
-
-  let layerOpacity = parseInt(form.get('layer-opacity') as string) / 100;
-  if (Number.isNaN(layerOpacity)) layerOpacity = 1;
-
-  return { layerOpacity };
-}
+type Options = z.infer<typeof optionsSpec>;
 
 function _main(
-  source: Omit<ml.SourceSpecification, 'type'>,
+  partialSource: Omit<ml.SourceSpecification, 'type'>,
   rawTilejson: unknown
 ) {
   const tilejsonParseResult = tilejsonSpec.safeParse(rawTilejson);
@@ -141,7 +154,11 @@ function _main(
   }
   const tilejson = tilejsonParseResult.data;
 
-  const options = readOptions();
+  const formData = Object.fromEntries(
+    new FormData($<HTMLFormElement>('#options-form')!).entries()
+  );
+  const options = optionsSpec.parse(formData);
+  console.info('options', options);
 
   formsContainer.style.display = 'none';
 
@@ -151,12 +168,26 @@ function _main(
       throw new Error('TileJSON is missing vector_layers');
     }
     style = generateVectorStyle(
-      { ...source, type: 'vector' },
+      { ...partialSource, type: 'vector' },
       tilejson.vector_layers,
       options
     );
+  } else if (options.rasterFormat === 'raster') {
+    style = generateRasterStyle({ ...partialSource, type: 'raster' }, options);
   } else {
-    style = generateRasterStyle({ ...source, type: 'raster' }, options);
+    let encoding: 'mapbox' | 'terrarium';
+    switch (options.rasterFormat) {
+      case 'raster-dem-mapbox':
+        encoding = 'mapbox';
+        break;
+      case 'raster-dem-terrarium':
+        encoding = 'terrarium';
+        break;
+    }
+    style = generateHillshadingStyle(
+      { ...partialSource, encoding, type: 'raster-dem' },
+      options
+    );
   }
 
   const map = new ml.Map({

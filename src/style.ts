@@ -1,7 +1,6 @@
 import type {
-  LayerSpecification,
+  RasterDEMSourceSpecification,
   RasterSourceSpecification,
-  SourceSpecification,
   StyleSpecification,
   VectorSourceSpecification,
 } from 'maplibre-gl';
@@ -160,6 +159,20 @@ export function generateRasterStyle(
     paint: {
       'raster-opacity': options.layerOpacity,
     },
+  });
+  return style;
+}
+
+export function generateHillshadingStyle(
+  source: RasterDEMSourceSpecification,
+  _options: StyleOptions
+): StyleSpecification {
+  const style = structuredClone(baseStyle);
+  style.sources.source = source;
+  style.layers.push({
+    id: 'generated_hillshade',
+    type: 'hillshade',
+    source: 'source',
   });
   return style;
 }

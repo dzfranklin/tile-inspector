@@ -39,6 +39,7 @@ input:user-invalid {
 .input-row {
   display: flex;
   gap: 8px;
+  margin: 10px 0;
 }
 
 .input-row input {
@@ -48,6 +49,10 @@ input:user-invalid {
 input[type="range"] {
   max-width: 300px;
   margin: 0;
+}
+
+input[type=range][list] {
+  margin-bottom: 5px;
 }
 
 #map {
