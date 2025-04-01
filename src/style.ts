@@ -7,10 +7,9 @@ import { schemeSet3 } from 'd3-scale-chromatic';
 
 export function generateVectorStyle(
   source: SourceSpecification,
-  vectorLayers: LayerSpecification[]
+  vectorLayers: LayerSpecification[],
+  layerOpacity: number
 ): StyleSpecification {
-  let baseOpacity = 0.85;
-
   const layers: LayerSpecification[] = [];
 
   layers.push({
@@ -67,8 +66,8 @@ export function generateVectorStyle(
         'fill-opacity': [
           'case',
           ['boolean', ['feature-state', 'hover'], false],
-          baseOpacity,
-          baseOpacity - 0.15,
+          layerOpacity + 0.15,
+          layerOpacity,
         ],
         'fill-outline-color': [
           'case',
@@ -92,6 +91,12 @@ export function generateVectorStyle(
           2,
           0.5,
         ],
+        'line-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'hover'], false],
+          layerOpacity + 0.15,
+          layerOpacity,
+        ],
       },
       filter: ['==', ['geometry-type'], 'LineString'],
     });
@@ -107,6 +112,12 @@ export function generateVectorStyle(
           ['boolean', ['feature-state', 'hover'], false],
           6,
           5,
+        ],
+        'circle-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'hover'], false],
+          layerOpacity + 0.15,
+          layerOpacity,
         ],
       },
       filter: ['==', ['geometry-type'], 'Point'],

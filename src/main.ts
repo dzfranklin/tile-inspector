@@ -91,9 +91,14 @@ function _main(
   source: ml.VectorSourceSpecification,
   vectorLayers: ml.LayerSpecification[]
 ) {
+  const options = new FormData($<HTMLFormElement>('#options-form')!);
+
+  let layerOpacity = parseInt(options.get('layer-opacity') as string) / 100;
+  if (Number.isNaN(layerOpacity)) layerOpacity = 1;
+
   formsContainer.style.display = 'none';
 
-  const style = generateVectorStyle(source, vectorLayers);
+  const style = generateVectorStyle(source, vectorLayers, layerOpacity);
 
   const map = new ml.Map({
     container: $('#map')!,

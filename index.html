@@ -27,6 +27,20 @@
           <input id="pmtiles-file-input" type="file" required>
         </fieldset>
       </form>
+      <form id="options-form" action="#">
+        <div class="input-row">
+          <label for="#layer-opacity-input">Layer opacity</label>
+          <input id="layer-opacity-input" name="layer-opacity" type="range" min="0" max="100" list="layer-opacity-markers"
+            value="85">
+          <datalist id="layer-opacity-markers">
+            <option value="0" label="0%"></option>
+            <option value="25" label="25%"></option>
+            <option value="50" label="50%"></option>
+            <option value="75" label="75%"></option>
+            <option value="100" label="100%"></option>
+          </datalist>
+        </div>
+      </form>
       </div>
 
     <div id="map"></div>

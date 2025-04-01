@@ -24,6 +24,10 @@ body,
   gap: 15px;
 }
 
+#options-form {
+  margin-top: 15px;
+}
+
 fieldset {
   padding: 18px;
 }
@@ -39,6 +43,11 @@ input:user-invalid {
 
 .input-row input {
   flex-grow: 1;
+}
+
+input[type="range"] {
+  max-width: 300px;
+  margin: 0;
 }
 
 #map {
