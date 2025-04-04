@@ -8,6 +8,7 @@ import {
   FetchSource as PMTilesFetchSource,
   PMTiles,
   Protocol as PMTilesProtocol,
+  tileTypeExt,
 } from 'pmtiles';
 import {
   generateHillshadingStyle,
@@ -70,7 +71,7 @@ pmtilesURLForm.addEventListener('submit', async (ev) => {
       maxzoom: header.maxZoom,
       bounds: [header.minLon, header.minLat, header.maxLon, header.maxLat],
     },
-    metadata
+    { metadata, format: tileTypeExt(header.tileType) }
   );
 });
 
@@ -97,7 +98,7 @@ async function loadPMTilesFileInput() {
       maxzoom: header.maxZoom,
       bounds: [header.minLon, header.minLat, header.maxLon, header.maxLat],
     },
-    metadata
+    { metadata, format: tileTypeExt(header.tileType) }
   );
 }
 
