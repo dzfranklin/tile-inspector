@@ -162,10 +162,7 @@ function _main(
   formsContainer.style.display = 'none';
 
   let style: ml.StyleSpecification;
-  if (!tilejson.format || tilejson.format === 'pbf') {
-    if (!tilejson.vector_layers) {
-      throw new Error('TileJSON is missing vector_layers');
-    }
+  if (tilejson.vector_layers && tilejson.vector_layers.length > 0) {
     style = generateVectorStyle(
       { ...partialSource, type: 'vector' },
       tilejson.vector_layers,
